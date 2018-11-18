@@ -1,0 +1,4 @@
+/.vs/**
+/StaffManagement/wwwroot/lib/**
+/StaffManagement/bin/**/*
+/StaffManagement/obj/**/*

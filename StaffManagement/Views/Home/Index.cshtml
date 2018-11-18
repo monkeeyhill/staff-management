@@ -1,0 +1,199 @@
+﻿
+<style>
+    input[type='submit'], button, [aria-label] {
+        cursor: pointer;
+    }
+
+    #spoiler {
+        display: none;
+    }
+
+    table {
+        width: 100%;
+        max-width: 500px;
+    }
+</style>
+<form action="javascript:void(0);" method="POST" onsubmit="app.Add()">
+    <input type="text" id="firstname" placeholder="firstname">
+    <input type="text" id="lastname" placeholder="lastname">
+    <input type="text" id="email" placeholder="email">
+    <input type="text" id="phone" placeholder="phone">
+    <input type="submit" value="Add">
+</form>
+
+<div id="spoiler">
+    <form action="javascript:void(0);" method="POST" id="saveEdit">
+        <input type="text" id="edit-firstname" placeholder="firstname">
+        <input type="text" id="edit-lastname" placeholder="lastname">
+        <input type="text" id="edit-email" placeholder="email">
+        <input type="text" id="edit-phone" placeholder="phone">
+        <input type="submit" value="Edit" /> <a onclick="CloseInput()" aria-label="Close">&#10006;</a>
+    </form>
+</div>
+
+<p id="counter"></p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Firstname</th>
+            <th>Lastname</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th style="width:1px;"></th>
+        </tr>
+    </thead>
+    <tbody id="staffs"></tbody>
+</table>
+
+<script>
+    var app = new function () {
+
+        this.el = document.getElementById('staffs');
+
+        this.staffs = [];
+
+        this.Count = function (data) {
+            var el = document.getElementById('counter');
+            var name = 'staff';
+
+            if (data) {
+                if (data > 1) {
+                    name = 'staffs';
+                }
+                el.innerHTML = data + ' ' + name;
+            } else {
+                el.innerHTML = 'No ' + name;
+            }
+        };
+
+        this.FetchAll = function () {
+            var data = '';
+
+            if (this.staffs.length > 0) {
+                for (i = 0; i < this.staffs.length; i++) {
+                    data += '<tr>';
+                    data += '<td>' + this.staffs[i].firstname + '</td>';
+                    data += '<td>' + this.staffs[i].lastname + '</td>';
+                    data += '<td>' + this.staffs[i].email + '</td>';
+                    data += '<td>' + this.staffs[i].phone + '</td>';
+                    data += '<td><button onclick="app.Edit(' + this.staffs[i].id + ')">Edit</button></td>';
+                    data += '<td><button onclick="app.Delete(' + this.staffs[i].id + ')">Delete</button></td>';
+                    data += '</tr>';
+                }
+            }
+
+            this.Count(this.staffs.length);
+            return this.el.innerHTML = data;
+        };
+
+        this.Add = function () {
+            var formData = new FormData();
+            formData.append('firstname', document.getElementById('firstname').value);
+            formData.append('lastname', document.getElementById('lastname').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('id', 0);
+            var self = this;
+            $.ajax({
+                url: '/api/staff/create',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function () {
+                    // Reset input value
+                    document.getElementById('firstname').value = '';
+                    document.getElementById('lastname').value = '';
+                    document.getElementById('phone').value = '';
+                    document.getElementById('email').value = '';
+                    self.Reload();
+                }
+            });
+        };
+
+        this.Edit = function (item) {
+            var staff = this.staffs.filter(function (a) { return a.id == item })[0];
+            if (staff == null) return;
+            // Display value in the field
+            document.getElementById('edit-firstname').value = staff.firstname;
+            document.getElementById('edit-lastname').value = staff.lastname;
+            document.getElementById('edit-email').value = staff.email;
+            document.getElementById('edit-phone').value = staff.phone;
+            // Display fields
+            document.getElementById('spoiler').style.display = 'block';
+            self = this;
+
+            document.getElementById('saveEdit').onsubmit = function () {
+                var formData = new FormData();
+                formData.append('firstname', document.getElementById('edit-firstname').value);
+                formData.append('lastname', document.getElementById('edit-lastname').value);
+                formData.append('phone', document.getElementById('edit-phone').value);
+                formData.append('email', document.getElementById('edit-email').value);
+                formData.append('id', item);
+                $.ajax({
+                    url: '/api/staff/update',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function () {
+                        // Reset input value
+                        document.getElementById('edit-firstname').value = '';
+                        document.getElementById('edit-lastname').value = '';
+                        document.getElementById('edit-phone').value = '';
+                        document.getElementById('edit-email').value = '';
+                        self.Reload();
+                        // Hide fields
+                        CloseInput();
+                    }
+                });
+                
+            }
+        };
+
+        this.Delete = function (item) {
+            var self = this;
+            var formData = new FormData();
+            formData.append('id', item);
+            $.ajax({
+                url: '/api/staff/delete',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (data) {
+                    self.Reload();
+                }
+            });
+        };
+
+        this.Reload = function () {
+            var formData = new FormData();
+            formData.append('page', '1');
+            formData.append('rows', '10000');
+            $.ajax({
+                url: '/api/staff/search',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (data) {
+                    app.staffs = data.rows;
+                    app.FetchAll();
+                }
+            });
+        };
+
+    }
+
+    //app.FetchAll();
+
+    function CloseInput() {
+        document.getElementById('spoiler').style.display = 'none';
+    }
+
+    $(function () {
+        app.Reload();
+    })
+</script>
